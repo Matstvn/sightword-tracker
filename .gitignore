@@ -39,3 +39,6 @@ Thumbs.db
 # FastAPI generated
 *.pyc
 *.pyo
+
+#exe 
+tailwind.exe
