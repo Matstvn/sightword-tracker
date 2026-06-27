@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher Assessment</title>
+
+    <!-- Your existing CSS -->
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="/static/css/teacher.css" />
+
+    <!-- Tailwind (for timer & controls) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ==========================================================
+           Same token system as dashboard / learner profile.
+           This screen's one job: run a live assessment with a child
+           in front of the teacher, so the timer ring and the
+           Correct/Incorrect controls carry the real visual weight —
+           everything else (header, progress, learner info) recedes.
+        ========================================================== */
+        :root {
+            --navy: #0B3D6E;
+            --navy-deep: #062845;
+            --gold: #F9A800;
+            --paper: #F7F5F0;
+            --paper-line: #E8E3D8;
+            --ink: #1C2B3A;
+            --ink-soft: #5B6B7A;
+            --mastery: #2F855A;
+            --mastery-soft: #E6F4EC;
+            --flag: #C0392B;
+            --flag-soft: #FBEAE8;
+            --card: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--paper);
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--ink);
+            background-image:
+                radial-gradient(circle at 0% 0%, rgba(11,61,110,0.04) 0%, transparent 45%),
+                radial-gradient(circle at 100% 0%, rgba(249,168,0,0.05) 0%, transparent 40%);
+        }
+
+        h1, h2, .display { font-family: 'Sora', system-ui, sans-serif; }
+
+        :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+
+        /* ---- Header (same letterhead, compact for this screen) ---- */
+        .deped-header {
+            background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+            border-bottom: 5px solid var(--gold);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .deped-header .header-inner {
+            padding: 0.85rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .deped-header .seal {
+            height: 38px;
+            width: 38px;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+        }
+        .deped-header .title-block {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .deped-header .title-block h1 {
+            color: white;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .deped-header .title-block .eyebrow {
+            color: var(--gold);
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        .btn-outline {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.92);
+            padding: 0.5rem 1.1rem;
+            border-radius: 9px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-family: 'Inter', sans-serif;
+        }
+        .deped-header .btn-outline:hover { background: rgba(255,255,255,0.16); }
+
+        /* Outline button used outside the header (light background) */
+        .btn-outline-light {
+            background: var(--card);
+            border: 1.5px solid var(--paper-line);
+            color: var(--ink);
+            padding: 0.6rem 1.1rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-outline-light:hover { background: var(--paper); border-color: #d8d2c2; }
+        .btn-outline-light:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary {
+            background: var(--navy);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-primary:hover:not(:disabled) { background: var(--navy-deep); }
+        .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* ---- Card primitive ---- */
+        .deped-card {
+            background: var(--card);
+            border-radius: 14px;
+            border: 1px solid var(--paper-line);
+            box-shadow: 0 1px 2px rgba(11,40,69,0.04);
+            padding: 1.15rem 1.4rem;
+        }
+
+        /* ---- Learner / level info ---- */
+        .level-pill {
+            background: rgba(11,61,110,0.07);
+            color: var(--navy);
+            padding: 0.15rem 0.7rem;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        /* ---- Progress ---- */
+        .deped-progress {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 10px;
+            border-radius: 30px;
+            overflow: hidden;
+            background: var(--paper-line);
+        }
+        .deped-progress::-webkit-progress-bar { background: var(--paper-line); border-radius: 30px; }
+        .deped-progress::-webkit-progress-value { background: var(--navy); border-radius: 30px; transition: width 0.2s; }
+        .deped-progress::-moz-progress-bar { background: var(--navy); border-radius: 30px; }
+
+        /* ---- Reader status ---- */
+        #readerStatus { font-weight: 600; }
+
+        /* ---- Word display: the second focal point ---- */
+        .word-display {
+            font-family: 'Sora', sans-serif;
+            font-size: clamp(2.4rem, 8vw, 4rem);
+            font-weight: 700;
+            text-align: center;
+            color: var(--ink);
+            padding: 1.75rem 1rem;
+            letter-spacing: -0.01em;
+        }
+
+        /* ---- Timer ring ---- */
+        .timer-ring { transition: stroke-dashoffset 0.1s linear, stroke 0.2s; }
+        .timer-wrap {
+            background: var(--card);
+            border: 1px solid var(--paper-line);
+            border-radius: 50%;
+            padding: 0.4rem;
+            box-shadow: 0 1px 2px rgba(11,40,69,0.04);
+        }
+        .timer-text { font-size: 1.3rem; font-weight: 700; font-family: 'Sora', sans-serif; }
+
+        /* ---- Correct / Incorrect controls — the real job of this page ---- */
+        .btn-success, .btn-danger {
+            border: none;
+            border-radius: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.08s, box-shadow 0.15s, background 0.15s;
+            font-family: 'Inter', sans-serif;
+            color: white;
+        }
+        .btn-success { background: var(--mastery); box-shadow: 0 3px 0 #1f6b44; }
+        .btn-success:hover:not(:disabled) { background: #276b48; }
+        .btn-success:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #1f6b44; }
+
+        .btn-danger { background: var(--flag); box-shadow: 0 3px 0 #962c21; }
+        .btn-danger:hover:not(:disabled) { background: #a8332a; }
+        .btn-danger:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #962c21; }
+
+        .btn-success:disabled, .btn-danger:disabled {
+            box-shadow: none;
+            transform: none;
+        }
+
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .kbd-hint {
+            font-size: 0.7rem;
+            color: var(--ink-soft);
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+        .kbd-hint kbd {
+            background: var(--paper);
+            border: 1px solid var(--paper-line);
+            border-radius: 5px;
+            padding: 0.05rem 0.4rem;
+            font-family: 'Inter', monospace;
+            font-size: 0.68rem;
+        }
+    </style>
+</head>
+
+<!-- ... head, same as above ... -->
+<body class="min-h-screen">
+
+    <header class="deped-header">
+        <div class="header-inner">
+            <div class="title-block">
+                <svg class="seal" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="46" fill="#0B3D6E" stroke="#F9A800" stroke-width="3"/>
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#F9A800" stroke-width="1" opacity="0.5"/>
+                    <text x="50" y="46" text-anchor="middle" font-family="Sora, sans-serif" font-size="15" font-weight="700" fill="#fff">DepEd</text>
+                    <text x="50" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-size="7" fill="#F9A800" letter-spacing="0.5">PHILIPPINES</text>
+                </svg>
+                <div>
+                    <span class="eyebrow">Live Assessment</span>
+                    <h1>Sight Word Tracker</h1>
+                </div>
+            </div>
+            <button id="exitBtn" class="btn-outline text-sm">✕ Exit</button>
+        </div>
+    </header>
+
+    <div class="max-w-4xl mx-auto px-4 py-6">
+
+        <!-- Learner info -->
+        <div class="deped-card mb-4 flex items-center justify-between flex-wrap gap-2">
+            <h2 id="learnerName" class="text-xl font-bold" style="color: var(--ink);">Learner Name</h2>
+            <span class="level-pill">📚 <span id="assessmentLevel">Pre-Primer</span></span>
+        </div>
+
+        <!-- Progress -->
+        <div class="deped-card mb-4">
+            <div class="flex justify-between text-sm mb-1.5" style="color: var(--ink-soft);">
+                <span id="progressCounter" class="font-medium">0 / 0</span>
+                <span id="progressPercent" class="font-medium">0%</span>
+            </div>
+            <progress id="progressBar" class="deped-progress w-full" value="0" max="100"></progress>
+        </div>
+
+        <!-- Controls + Timer -->
+        <div class="deped-card mb-4 flex items-center justify-between gap-4 flex-wrap">
+            <div class="flex items-center gap-3 flex-wrap">
+                <button id="openReaderBtn" class="btn-outline-light text-sm">📺 Open Reader</button>
+                <button id="startAssessmentBtn" class="btn-primary text-sm px-5 py-2.5">▶️ Start Assessment</button>
+                <span id="readerStatus" class="text-sm" style="color: var(--ink-soft);">⏳ Connecting...</span>
+            </div>
+            <div class="timer-wrap">
+                <svg width="48" height="48" viewBox="0 0 48 48">
+                    <circle cx="24" cy="24" r="20" fill="none" stroke="#E8E3D8" stroke-width="3" />
+                    <circle id="timerCircle" class="timer-ring" cx="24" cy="24" r="20" fill="none" stroke="#0B3D6E" stroke-width="3" stroke-dasharray="125.6" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 24 24)" />
+                    <text id="timerText" class="timer-text" x="24" y="29" text-anchor="middle" fill="#1C2B3A">10</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Word Display -->
+        <div class="deped-card mb-4">
+            <div id="currentWord" class="word-display">▶️ Press Start</div>
+        </div>
+
+        <!-- Teacher Controls -->
+        <div class="flex gap-4 mb-2">
+            <button id="incorrectBtn" class="btn-danger flex-1 py-5 text-xl">❌ Incorrect</button>
+            <button id="correctBtn" class="btn-success flex-1 py-5 text-xl">✅ Correct</button>
+        </div>
+        <p class="kbd-hint mb-4">
+            <kbd>←</kbd> Incorrect &nbsp; <kbd>→</kbd> / <kbd>Space</kbd> Correct &nbsp; <kbd>↑</kbd> Previous &nbsp; <kbd>Enter</kbd> Finish &nbsp; <kbd>Esc</kbd> Exit
+        </p>
+
+        <!-- Navigation -->
+        <div class="flex gap-4">
+            <button id="previousBtn" class="btn-outline-light flex-1 py-2.5">◀ Previous</button>
+            <button id="finishBtn" class="btn-primary flex-1 py-2.5">🏁 Finish Assessment</button>
+        </div>
+
+    </div>
+
+    <script type="module" src="/static/js/controllers/teacherAssessment.js"></script>
+</body>
+</html>

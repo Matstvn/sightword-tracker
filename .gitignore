@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+*.log
+
+# Environment variables (sensitive)
+.env
+.env.local
+
+# Database files (if any)
+*.db
+*.sqlite3
+
+# Tailwind build output (optional – you can keep it)
+# static/css/tailwind.css
+
+# Node modules (if used)
+node_modules/
+npm-debug.log*
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# FastAPI generated
+*.pyc
+*.pyo

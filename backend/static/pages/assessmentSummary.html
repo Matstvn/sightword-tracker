@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assessment Summary</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css" />
+    <style>
+        .word-tag { display: inline-block; padding: 0.2rem 0.8rem; border-radius: 30px; font-weight: 500; margin: 0.2rem; }
+        .word-tag.correct { background: #d1fae5; color: #065f46; }
+        .word-tag.incorrect { background: #fee2e2; color: #991b1b; }
+        .recommendation-box { border-left: 4px solid #f9a800; background: #fffbeb; padding: 1rem 1.25rem; border-radius: 0.5rem; }
+        .progress-ring { transition: stroke-dashoffset 0.5s ease; }
+    </style>
+</head>
+<body class="bg-[#f0f4f8] min-h-screen">
+
+    <!-- DepEd Header -->
+    <header class="deped-header">
+        <div class="max-w-4xl mx-auto flex items-center justify-between flex-wrap">
+            <div class="logo">
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-10 w-auto">
+                    <circle cx="50" cy="50" r="45" fill="#fff" stroke="#f9a800" stroke-width="3"/>
+                    <text x="50" y="55" text-anchor="middle" font-size="28" font-weight="bold" fill="#003366">DepEd</text>
+                    <text x="50" y="75" text-anchor="middle" font-size="10" fill="#003366">Sight Word Tracker</text>
+                </svg>
+                <div>
+                    <h1>Assessment Summary</h1>
+                    <span class="sub">Department of Education</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <span class="text-sm">📊 Summary</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Loading -->
+        <div id="loadingSpinner" class="flex justify-center py-20">
+            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        <!-- Content -->
+        <div id="summaryContent" class="hidden">
+
+            <!-- Header -->
+            <div class="deped-card p-6 mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">📊 Assessment Summary</h1>
+                        <p id="learnerInfo" class="text-gray-600 mt-1">Loading...</p>
+                    </div>
+                    <div class="mt-3 sm:mt-0">
+                        <span id="levelBadge" class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">Level: —</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+                <div class="deped-card text-center"><p class="text-sm text-gray-500">Total Words</p><p id="totalWords" class="text-2xl font-bold text-gray-800">0</p></div>
+                <div class="deped-card text-center"><p class="text-sm text-gray-500">Correct</p><p id="correctCount" class="text-2xl font-bold text-emerald-600">0</p></div>
+                <div class="deped-card text-center"><p class="text-sm text-gray-500">Incorrect</p><p id="incorrectCount" class="text-2xl font-bold text-red-600">0</p></div>
+                <div class="deped-card text-center"><p class="text-sm text-gray-500">Mastery</p><p id="masteryPercent" class="text-2xl font-bold text-blue-600">0%</p></div>
+            </div>
+
+            <!-- Mastery Bar -->
+            <div class="deped-card p-6 mb-6">
+                <div class="flex justify-between text-sm"><span>Mastery Score</span><span id="masteryLabel" class="font-bold text-blue-600">0%</span></div>
+                <div class="w-full bg-gray-200 rounded-full h-4 mt-1 overflow-hidden">
+                    <div id="masteryBar" class="bg-[#f9a800] h-4 rounded-full transition-all duration-700" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- Recommendation -->
+            <div id="recommendationBox" class="recommendation-box mb-6">
+                <p id="recommendationText" class="text-gray-800 font-medium">Loading recommendation...</p>
+            </div>
+
+            <!-- Word Results -->
+            <div class="deped-card overflow-hidden">
+                <div class="border-b border-gray-200 pb-4 mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">📝 Word Details</h2>
+                </div>
+                <div id="wordResultsContainer"></div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                <a id="backToProfileBtn" href="#" class="btn-outline flex-1 text-center">👤 Back to Learner</a>
+                <a id="newAssessmentBtn" href="#" class="btn-primary flex-1 text-center">🔄 New Assessment</a>
+                <button id="printBtn" class="btn-success flex-1 text-center">🖨️ Print</button>
+            </div>
+
+        </div>
+
+        <!-- Error -->
+        <div id="errorState" class="hidden text-center py-20">
+            <div class="text-5xl mb-4">⚠️</div>
+            <h3 class="text-xl font-semibold text-red-600">Failed to load assessment</h3>
+            <p id="errorMessage" class="text-gray-500 mt-2">Please check the ID and try again.</p>
+            <a href="/" class="btn-primary inline-block mt-4">← Back to Dashboard</a>
+        </div>
+
+    </main>
+
+    <script type="module" src="/static/js/controllers/assessmentSummary.js"></script>
+</body>
+</html>

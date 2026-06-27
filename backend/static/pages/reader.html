@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reader Display</title>
+    <style>
+        /* ----- Reset & Full-Screen ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Poppins';
+            overflow: hidden;
+            user-select: none;
+            /* 🌟 NEW: gradient background */
+            background: linear-gradient(145deg, #0b1120 0%, #1a2332 100%);
+        }
+
+        /* ----- Word Container ----- */
+        #wordDisplay {
+            color: #ffffff;
+            font-size: clamp(4rem, 22vw, 30rem);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-align: center;
+            padding: 20px;
+            line-height: 1.2;
+            word-break: break-word;
+            max-width: 95vw;
+            /* 🌟 NEW: soft glow + subtle animation */
+            text-shadow: 0 0 40px rgba(255, 255, 255, 0.15),
+                         0 0 80px rgba(100, 150, 255, 0.10);
+            animation: breathe 3s ease-in-out infinite;
+            transition: all 0.2s ease;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        /* ----- Waiting State ----- */
+        #waitingState {
+            color: #a0b4c8;
+            font-size: clamp(1.2rem, 3vw, 3.5rem);
+            font-weight: 300;
+            letter-spacing: 0.15em;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.08);
+            border-top: 4px solid #7aa9ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .waiting-text {
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            background: linear-gradient(90deg, #8ab4ff, #6c8cff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ----- Status Indicator (bottom-right) ----- */
+        #statusDot {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ff4444;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.25);
+        }
+        #statusDot.connected {
+            background: #44ff88;
+            box-shadow: 0 0 20px rgba(68, 255, 136, 0.35);
+        }
+
+        #statusLabel {
+            position: fixed;
+            bottom: 28px;
+            right: 55px;
+            color: #6a7f98;
+            font-size: 12px;
+            font-family: 'Segoe UI', sans-serif;
+            letter-spacing: 0.08em;
+            font-weight: 300;
+        }
+
+        /* ----- Optional: Show a subtle border frame ----- */
+        .reader-frame {
+            position: fixed;
+            inset: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 32px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ----- Hide everything when word is displayed ----- */
+        #wordDisplay {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Decorative frame (optional) -->
+    <div class="reader-frame"></div>
+
+    <!-- Waiting State -->
+    <div id="waitingState">
+        <div class="spinner"></div>
+        <div class="waiting-text">Waiting for Teacher…</div>
+    </div>
+
+    <!-- Word Display -->
+    <div id="wordDisplay"></div>
+
+    <!-- Status indicators -->
+    <div id="statusDot"></div>
+    <div id="statusLabel">Reader</div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/reader.js"></script>
+</body>
+</html>

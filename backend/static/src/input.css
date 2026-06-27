@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   DEPED THEME – Sight Word Tracker
+   ============================================================ */
+
+@layer base {
+    :root {
+        --deped-blue: #003366;
+        --deped-blue-light: #1a3b5c;
+        --deped-red: #cc0000;
+        --deped-gold: #f9a800;
+        --deped-gray-light: #f0f4f8;
+    }
+
+    body {
+        background-color: var(--deped-gray-light);
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        color: #1e293b;
+    }
+}
+
+@layer components {
+    /* ----- DepEd Header ----- */
+    .deped-header {
+        background: linear-gradient(135deg, var(--deped-blue) 0%, var(--deped-blue-light) 100%);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        border-bottom: 3px solid var(--deped-gold);
+    }
+    .deped-header .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .deped-header .logo svg {
+        height: 40px;
+        width: auto;
+    }
+    .deped-header .logo h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: 0.02em;
+    }
+    .deped-header .logo .sub {
+        font-size: 0.75rem;
+        opacity: 0.8;
+        font-weight: 300;
+        display: block;
+        margin-top: -0.2rem;
+    }
+    .deped-header .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .deped-header .header-actions a,
+    .deped-header .header-actions button {
+        color: white;
+        background: rgba(255,255,255,0.15);
+        border: none;
+        padding: 0.4rem 1rem;
+        border-radius: 30px;
+        font-size: 0.85rem;
+        transition: background 0.2s;
+        text-decoration: none;
+    }
+    .deped-header .header-actions a:hover,
+    .deped-header .header-actions button:hover {
+        background: rgba(255,255,255,0.3);
+    }
+
+    /* ----- Cards ----- */
+    .deped-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e9edf4;
+        padding: 1.5rem;
+        transition: box-shadow 0.2s;
+    }
+    .deped-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    /* ----- Buttons ----- */
+    .btn-primary {
+        background: var(--deped-blue);
+        color: white;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: background 0.2s, transform 0.1s;
+        box-shadow: 0 2px 6px rgba(0, 51, 102, 0.25);
+        cursor: pointer;
+    }
+    .btn-primary:hover {
+        background: #002244;
+        transform: translateY(-1px);
+    }
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-success {
+        background: #16a34a;
+        color: white;
+    }
+    .btn-success:hover {
+        background: #15803d;
+    }
+
+    .btn-danger {
+        background: var(--deped-red);
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #a80000;
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 2px solid var(--deped-blue);
+        color: var(--deped-blue);
+        padding: 0.5rem 1.25rem;
+    }
+    .btn-outline:hover {
+        background: var(--deped-blue);
+        color: white;
+    }
+
+    /* ----- Progress Bar (DepEd gold) ----- */
+    progress.deped-progress {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 8px;
+        border-radius: 20px;
+        background: #e5e7eb;
+    }
+    progress.deped-progress::-webkit-progress-bar {
+        background: #e5e7eb;
+        border-radius: 20px;
+    }
+    progress.deped-progress::-webkit-progress-value {
+        background: var(--deped-gold);
+        border-radius: 20px;
+        transition: width 0.3s ease;
+    }
+    progress.deped-progress::-moz-progress-bar {
+        background: var(--deped-gold);
+        border-radius: 20px;
+    }
+
+    /* ----- Word Display (Teacher) ----- */
+    .word-display {
+        font-size: clamp(4rem, 15vw, 12rem);
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        color: var(--deped-blue);
+        text-align: center;
+        padding: 1rem;
+        line-height: 1.2;
+    }
+
+    /* ----- Tags for Correct/Incorrect ----- */
+    .tag-correct {
+        background: #d1fae5;
+        color: #065f46;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+        font-weight: 500;
+        display: inline-block;
+        margin: 0.2rem;
+    }
+    .tag-incorrect {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+        font-weight: 500;
+        display: inline-block;
+        margin: 0.2rem;
+    }
+
+    /* ----- Recommendation Box ----- */
+    .recommendation-box {
+        border-left: 4px solid var(--deped-gold);
+        background: #fffbeb;
+        padding: 1rem 1.25rem;
+        border-radius: 0.5rem;
+    }
+
+    /* ----- Reader Display (Fullscreen) ----- */
+    .reader-word {
+        font-size: clamp(4rem, 22vw, 28rem);
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 0 40px rgba(255,255,255,0.15);
+        text-align: center;
+        line-height: 1.2;
+        padding: 0 1rem;
+        animation: breathe 3s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+    }
+}

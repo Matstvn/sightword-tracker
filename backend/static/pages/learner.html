@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Learner Profile</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ==========================================================
+           Same token system as the dashboard, so the two pages
+           read as one product.
+        ========================================================== */
+        :root {
+            --navy: #0B3D6E;
+            --navy-deep: #062845;
+            --gold: #F9A800;
+            --paper: #F7F5F0;
+            --paper-line: #E8E3D8;
+            --ink: #1C2B3A;
+            --ink-soft: #5B6B7A;
+            --mastery: #2F855A;
+            --mastery-soft: #E6F4EC;
+            --flag: #C0392B;
+            --flag-soft: #FBEAE8;
+            --plum: #6D3FA0;
+            --plum-soft: #F1E9FA;
+            --card: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--paper);
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 0% 0%, rgba(11,61,110,0.04) 0%, transparent 45%),
+                radial-gradient(circle at 100% 0%, rgba(249,168,0,0.05) 0%, transparent 40%);
+        }
+
+        h1, h2, h3, .display { font-family: 'Sora', system-ui, sans-serif; }
+
+        :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+
+        /* ---- Letterhead Header (shared with dashboard) ---- */
+        .deped-header {
+            background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+            border-bottom: 5px solid var(--gold);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .deped-header .header-inner { padding: 0.95rem 0; }
+        .deped-header .seal {
+            height: 46px;
+            width: 46px;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+        }
+        .deped-header .title-block {
+            border-left: 1px solid rgba(255,255,255,0.18);
+            padding-left: 0.9rem;
+        }
+        .deped-header .title-block .eyebrow {
+            color: var(--gold);
+            font-size: 0.62rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            display: block;
+            line-height: 1.3;
+        }
+        .deped-header .title-block h1 {
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin: 0;
+            line-height: 1.25;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+        .status-badge {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            padding: 0.35rem 0.95rem;
+            border-radius: 30px;
+            color: rgba(255,255,255,0.92);
+            font-size: 0.78rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+        }
+        .back-link {
+            color: rgba(255,255,255,0.78);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .back-link:hover { color: white; }
+
+        /* ---- Shared card primitive ---- */
+        .deped-card {
+            background: var(--card);
+            border-radius: 14px;
+            border: 1px solid var(--paper-line);
+            box-shadow: 0 1px 2px rgba(11,40,69,0.04);
+            padding: 1.5rem;
+        }
+
+        .btn-primary {
+            background: var(--navy);
+            color: white;
+            padding: 0.65rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.92rem;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .btn-primary:hover { background: var(--navy-deep); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* ---- Avatar ---- */
+        .avatar-ring {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(11,61,110,0.1), rgba(11,61,110,0.04));
+            color: var(--navy);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Sora', sans-serif;
+            font-weight: 700;
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            border: 2px solid rgba(11,61,110,0.1);
+        }
+
+        .lrn-text {
+            font-family: 'Inter', monospace;
+            font-size: 0.8rem;
+            color: var(--ink-soft);
+            letter-spacing: 0.01em;
+        }
+
+        .level-pill {
+            background: var(--plum-soft);
+            color: var(--plum);
+            padding: 0.2rem 0.75rem;
+            border-radius: 30px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        /* ---- Ledger strip (reuses dashboard pattern, 3 columns here too) ---- */
+        .ledger {
+            background: var(--card);
+            border-radius: 14px;
+            border: 1px solid var(--paper-line);
+            box-shadow: 0 1px 2px rgba(11,40,69,0.04);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            overflow: hidden;
+        }
+        .ledger-item {
+            padding: 1.15rem 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+        .ledger-item + .ledger-item { border-left: 1px solid var(--paper-line); }
+        .ledger-item .glyph {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        .ledger-item:nth-child(1) .glyph { background: rgba(11,61,110,0.08); color: var(--navy); }
+        .ledger-item:nth-child(2) .glyph { background: var(--mastery-soft); color: var(--mastery); }
+        .ledger-item:nth-child(3) .glyph { background: var(--plum-soft); color: var(--plum); }
+        .ledger-item .label {
+            color: var(--ink-soft);
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0;
+        }
+        .ledger-item .value {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--ink);
+            line-height: 1.15;
+        }
+        @media (max-width: 640px) {
+            .ledger { grid-template-columns: 1fr; }
+            .ledger-item + .ledger-item { border-left: none; border-top: 1px solid var(--paper-line); }
+            .ledger-item .value { font-size: 1.35rem; }
+        }
+
+        /* ---- History table ---- */
+        .history-table thead th {
+            background: var(--paper);
+            color: var(--ink-soft);
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--paper-line);
+        }
+        .history-table tbody td {
+            padding: 0.9rem 1.25rem;
+            font-size: 0.88rem;
+            color: var(--ink);
+            border-bottom: 1px solid var(--paper-line);
+        }
+        .history-table tbody tr:last-child td { border-bottom: none; }
+        .history-table tbody tr {
+            transition: background 0.12s;
+        }
+        .history-table tbody tr:hover { background: var(--paper); }
+
+        .mastery-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-weight: 600;
+            font-size: 0.82rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 30px;
+        }
+        .mastery-tag.high { background: var(--mastery-soft); color: var(--mastery); }
+        .mastery-tag.mid { background: rgba(249,168,0,0.14); color: #b3760a; }
+        .mastery-tag.low { background: var(--flag-soft); color: var(--flag); }
+
+        .row-action {
+            background: transparent;
+            border: none;
+            color: var(--ink-soft);
+            cursor: pointer;
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: background 0.15s, color 0.15s;
+        }
+        .row-action:hover { background: rgba(11,61,110,0.08); color: var(--navy); }
+
+        /* ---- Empty / error states ---- */
+        .empty-block {
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+        .empty-block .icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.6; }
+        .empty-block p { color: var(--ink-soft); font-size: 0.9rem; }
+
+        .loading-spinner-ring {
+            width: 34px;
+            height: 34px;
+            border: 3px solid var(--paper-line);
+            border-top-color: var(--navy);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- DepEd Header -->
+    <header class="deped-header">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 header-inner flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-0">
+                <svg class="seal" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="46" fill="#0B3D6E" stroke="#F9A800" stroke-width="3"/>
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#F9A800" stroke-width="1" opacity="0.5"/>
+                    <text x="50" y="46" text-anchor="middle" font-family="Sora, sans-serif" font-size="15" font-weight="700" fill="#fff">DepEd</text>
+                    <text x="50" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-size="7" fill="#F9A800" letter-spacing="0.5">PHILIPPINES</text>
+                </svg>
+                <div class="title-block">
+                    <span class="eyebrow">Department of Education</span>
+                    <h1>Learner Profile</h1>
+                </div>
+            </div>
+            <div class="header-actions">
+                <span id="status-badge" class="status-badge">Connecting…</span>
+                <a href="/" class="back-link">← Back to dashboard</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Loading -->
+        <div id="loadingSpinner" class="flex justify-center py-20">
+            <div class="loading-spinner-ring"></div>
+        </div>
+
+        <!-- Profile Content -->
+        <div id="profileContent" class="hidden">
+
+            <!-- Learner Card -->
+            <div class="deped-card mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div id="learnerAvatar" class="avatar-ring">?</div>
+                        <div>
+                            <h1 id="learnerName" class="text-2xl font-bold" style="color: var(--ink);">Loading…</h1>
+                            <p id="learnerLRN" class="lrn-text mt-0.5">LRN: —</p>
+                            <p id="learnerDetails" class="text-sm mt-1" style="color: var(--ink-soft);">
+                                <span id="learnerSection">—</span>
+                            </p>
+                            <p id="sightWordLevel" class="text-sm font-medium mt-1.5">
+                                📚 Current Level: <span id="currentLevelDisplay" class="level-pill">—</span>
+                            </p>
+                        </div>
+                    </div>
+                    <button id="startAssessmentBtn" class="btn-primary flex items-center gap-2">
+                        📝 Start Assessment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Ledger -->
+            <div class="ledger mb-6">
+                <div class="ledger-item">
+                    <div class="glyph">📋</div>
+                    <div>
+                        <p class="label">Total Assessments</p>
+                        <div class="value" id="totalAssessments">0</div>
+                    </div>
+                </div>
+                <div class="ledger-item">
+                    <div class="glyph">🏆</div>
+                    <div>
+                        <p class="label">Overall Mastery</p>
+                        <div class="value" id="overallMastery">0%</div>
+                    </div>
+                </div>
+                <div class="ledger-item">
+                    <div class="glyph">📚</div>
+                    <div>
+                        <p class="label">Current Level</p>
+                        <div class="value" id="currentLevel">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Table -->
+            <div class="deped-card overflow-hidden p-0">
+                <div class="px-6 pt-6 pb-4" style="border-bottom: 1px solid var(--paper-line);">
+                    <h2 class="text-lg font-semibold" style="color: var(--ink);">📊 Assessment History</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full history-table">
+                        <thead>
+                            <tr>
+                                <th class="text-left">Date</th>
+                                <th class="text-left">Level</th>
+                                <th class="text-center">Words</th>
+                                <th class="text-center">Correct</th>
+                                <th class="text-center">Mastery</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody"></tbody>
+                    </table>
+                </div>
+                <div id="emptyHistory" class="hidden empty-block">
+                    <div class="icon">📭</div>
+                    <p>No assessments recorded yet.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div id="errorState" class="hidden empty-block py-20">
+            <div class="icon" style="opacity:1;">⚠️</div>
+            <h3 class="text-xl font-semibold" style="color: var(--flag);">Failed to load learner</h3>
+            <p id="errorMessage" class="mt-2">Please check the ID and try again.</p>
+            <a href="/" class="btn-primary inline-block mt-4">← Back to Dashboard</a>
+        </div>
+
+    </main>
+
+    <script type="module" src="/static/js/learner.js"></script>
+</body>
+</html>

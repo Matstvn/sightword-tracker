@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sight Word Tracker – Dashboard</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ==========================================================
+           DESIGN TOKENS
+           Color   — Navy #0B3D6E, Gold #F9A800, Paper #F7F5F0,
+                     Ink #1C2B3A, Mastery green #2F855A, Flag red #C0392B
+           Type    — Display: Sora (institutional, confident)
+                     Body/data: Inter (legible at small sizes, tabular)
+           Motif   — concentric seal ring, echoed in the mastery ring
+        ========================================================== */
+        :root {
+            --navy: #0B3D6E;
+            --navy-deep: #062845;
+            --gold: #F9A800;
+            --paper: #F7F5F0;
+            --paper-line: #E8E3D8;
+            --ink: #1C2B3A;
+            --ink-soft: #5B6B7A;
+            --mastery: #2F855A;
+            --mastery-soft: #E6F4EC;
+            --flag: #C0392B;
+            --flag-soft: #FBEAE8;
+            --card: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--paper);
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 0% 0%, rgba(11,61,110,0.04) 0%, transparent 45%),
+                radial-gradient(circle at 100% 0%, rgba(249,168,0,0.05) 0%, transparent 40%);
+        }
+
+        h1, h2, h3, .display {
+            font-family: 'Sora', system-ui, sans-serif;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--gold);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+
+        /* ---- Letterhead Header ---- */
+        .deped-header {
+            background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+            border-bottom: 5px solid var(--gold);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .deped-header .header-inner {
+            padding: 0.95rem 0;
+        }
+        .deped-header .seal {
+            height: 46px;
+            width: 46px;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+        }
+        .deped-header .title-block {
+            border-left: 1px solid rgba(255,255,255,0.18);
+            padding-left: 0.9rem;
+        }
+        .deped-header .title-block .eyebrow {
+            color: var(--gold);
+            font-size: 0.62rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            display: block;
+            line-height: 1.3;
+        }
+        .deped-header .title-block h1 {
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin: 0;
+            line-height: 1.25;
+        }
+        .status-badge {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            padding: 0.35rem 0.95rem;
+            border-radius: 30px;
+            color: rgba(255,255,255,0.92);
+            font-size: 0.78rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-family: 'Inter', sans-serif;
+        }
+        .status-badge .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-badge .dot.online {
+            background: #4ade80;
+            box-shadow: 0 0 0 3px rgba(74,222,128,0.18);
+        }
+        .status-badge .dot.offline {
+            background: #f87171;
+            box-shadow: 0 0 0 3px rgba(248,113,113,0.18);
+        }
+
+        /* ---- Ledger strip (stats) ---- */
+        .ledger {
+            background: var(--card);
+            border-radius: 14px;
+            border: 1px solid var(--paper-line);
+            box-shadow: 0 1px 2px rgba(11,40,69,0.04);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            overflow: hidden;
+        }
+        .ledger-item {
+            padding: 1.15rem 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            position: relative;
+        }
+        .ledger-item + .ledger-item {
+            border-left: 1px solid var(--paper-line);
+        }
+        .ledger-item .glyph {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        .ledger-item:nth-child(1) .glyph { background: rgba(11,61,110,0.08); color: var(--navy); }
+        .ledger-item:nth-child(2) .glyph { background: rgba(249,168,0,0.14); color: #b3760a; }
+        .ledger-item:nth-child(3) .glyph { background: var(--mastery-soft); color: var(--mastery); }
+        .ledger-item .label {
+            color: var(--ink-soft);
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0;
+        }
+        .ledger-item .value {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--ink);
+            line-height: 1.15;
+        }
+
+        /* ---- Toolbar ---- */
+        .search-wrapper {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 0 0.4rem 0 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            border: 1px solid var(--paper-line);
+            flex: 1;
+            max-width: 420px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .search-wrapper:focus-within {
+            border-color: var(--navy);
+            box-shadow: 0 0 0 3px rgba(11,61,110,0.08);
+        }
+        .search-wrapper input {
+            border: none;
+            outline: none;
+            padding: 0.62rem 0;
+            font-size: 0.92rem;
+            flex: 1;
+            background: transparent;
+            color: var(--ink);
+            font-family: 'Inter', sans-serif;
+        }
+        .search-wrapper input::placeholder { color: #9AA5B1; }
+        .search-wrapper .search-icon { color: #9AA5B1; font-size: 1.05rem; }
+
+        .btn-import {
+            background: var(--navy);
+            color: white;
+            padding: 0.62rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        .btn-import:hover { background: var(--navy-deep); }
+        .btn-import:active { transform: scale(0.98); }
+        .btn-import:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .section-label {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .section-count {
+            color: var(--ink-soft);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* ---- Learner Cards ---- */
+        .learner-card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 1.15rem 1.15rem 0.9rem;
+            border: 1px solid var(--paper-line);
+            transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+            display: flex;
+            flex-direction: column;
+        }
+        .learner-card:hover {
+            border-color: rgba(11,61,110,0.18);
+            box-shadow: 0 6px 20px rgba(11,40,69,0.07);
+            transform: translateY(-2px);
+        }
+
+        /* Mastery ring — the signature element, echoing the seal motif */
+        .mastery-ring {
+            width: 46px;
+            height: 46px;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .mastery-ring svg { transform: rotate(-90deg); }
+        .mastery-ring .ring-bg {
+            fill: none;
+            stroke: var(--paper-line);
+            stroke-width: 3.5;
+        }
+        .mastery-ring .ring-fg {
+            fill: none;
+            stroke: var(--mastery);
+            stroke-width: 3.5;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.4s ease;
+        }
+        .mastery-ring .ring-fg.low { stroke: var(--gold); }
+        .mastery-ring .ring-fg.flag { stroke: var(--flag); }
+        .mastery-ring .ring-label {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.62rem;
+            font-weight: 700;
+            font-family: 'Sora', sans-serif;
+            color: var(--ink);
+        }
+
+        .learner-card .name {
+            font-weight: 600;
+            font-size: 0.97rem;
+            color: var(--ink);
+            margin: 0;
+            line-height: 1.3;
+        }
+        .learner-card .lrn {
+            font-size: 0.74rem;
+            color: var(--ink-soft);
+            font-family: 'Inter', monospace;
+            letter-spacing: 0.01em;
+        }
+        .learner-card .level-badge {
+            background: var(--paper);
+            color: var(--ink-soft);
+            padding: 0.2rem 0.7rem;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 0.6rem;
+            border: 1px solid var(--paper-line);
+        }
+        .learner-card .level-badge.primed {
+            background: rgba(11,61,110,0.07);
+            color: var(--navy);
+            border-color: transparent;
+        }
+        .learner-card .level-badge.advanced {
+            background: var(--mastery-soft);
+            color: var(--mastery);
+            border-color: transparent;
+        }
+        .learner-card .actions {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 0.85rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--paper-line);
+        }
+        .learner-card .actions .btn-profile,
+        .learner-card .actions .btn-delete {
+            background: transparent;
+            border: none;
+            color: var(--ink-soft);
+            cursor: pointer;
+            padding: 0.35rem 0.65rem;
+            border-radius: 8px;
+            transition: background 0.15s, color 0.15s;
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+        .learner-card .actions .btn-profile:hover {
+            background: var(--paper);
+            color: var(--navy);
+        }
+        .learner-card .actions .btn-delete {
+            margin-left: auto;
+        }
+        .learner-card .actions .btn-delete:hover {
+            background: var(--flag-soft);
+            color: var(--flag);
+        }
+
+        /* ---- Empty State ---- */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--card);
+            border-radius: 14px;
+            border: 1.5px dashed var(--paper-line);
+        }
+        .empty-state .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+            opacity: 0.6;
+        }
+        .empty-state h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--ink);
+            margin: 0;
+        }
+        .empty-state p {
+            color: var(--ink-soft);
+            margin-top: 0.3rem;
+            font-size: 0.9rem;
+        }
+
+        /* ---- Loading ---- */
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            padding: 3rem 0;
+        }
+        .loading-spinner .spinner {
+            width: 34px;
+            height: 34px;
+            border: 3px solid var(--paper-line);
+            border-top-color: var(--navy);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ---- Responsive ---- */
+        @media (max-width: 640px) {
+            .deped-header .header-inner { padding: 0.75rem 0; }
+            .deped-header .title-block h1 { font-size: 1.02rem; }
+            .deped-header .seal { height: 36px; width: 36px; }
+            .ledger { grid-template-columns: 1fr; }
+            .ledger-item + .ledger-item { border-left: none; border-top: 1px solid var(--paper-line); }
+            .ledger-item .value { font-size: 1.35rem; }
+            .search-wrapper { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- DEPED LETTERHEAD HEADER -->
+    <!-- ============================================================ -->
+    <header class="deped-header">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 header-inner flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-0">
+                <svg class="seal" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="46" fill="#0B3D6E" stroke="#F9A800" stroke-width="3"/>
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#F9A800" stroke-width="1" opacity="0.5"/>
+                    <text x="50" y="46" text-anchor="middle" font-family="Sora, sans-serif" font-size="15" font-weight="700" fill="#fff">DepEd</text>
+                    <text x="50" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-size="7" fill="#F9A800" letter-spacing="0.5">PHILIPPINES</text>
+                </svg>
+                <div class="title-block">
+                    <span class="eyebrow">Department of Education</span>
+                    <h1>Sight Word Tracker</h1>
+                </div>
+            </div>
+            <span id="status-badge" class="status-badge">
+                <span class="dot online" id="statusDot"></span>
+                <span id="statusText">Connecting…</span>
+            </span>
+        </div>
+    </header>
+
+    <!-- ============================================================ -->
+    <!-- MAIN CONTENT -->
+    <!-- ============================================================ -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Ledger (Stats) -->
+        <div class="ledger mb-8">
+            <div class="ledger-item">
+                <div class="glyph">🧑‍🎓</div>
+                <div>
+                    <p class="label">Total Learners</p>
+                    <div class="value" id="totalLearners">0</div>
+                </div>
+            </div>
+            <div class="ledger-item">
+                <div class="glyph">📝</div>
+                <div>
+                    <p class="label">Assessments Today</p>
+                    <div class="value" id="totalAssessments">0</div>
+                </div>
+            </div>
+            <div class="ledger-item">
+                <div class="glyph">🏆</div>
+                <div>
+                    <p class="label">Avg. Mastery</p>
+                    <div class="value" id="avgMastery">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-5">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Search by name or LRN…" />
+            </div>
+            <button id="importBtn" class="btn-import">
+                <span>📂</span> Import SF1
+            </button>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" />
+        </div>
+
+        <div class="flex items-center justify-between mb-4">
+            <span class="section-label">Learners</span>
+            <span class="section-count" id="learnerCount"></span>
+        </div>
+
+        <!-- Learner Grid -->
+        <div id="learnerGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <!-- Cards rendered by JavaScript -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state hidden">
+            <div class="icon">📭</div>
+            <h3>No learners yet</h3>
+            <p>Import your SF1 file to get started.</p>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingSpinner" class="loading-spinner hidden">
+            <div class="spinner"></div>
+        </div>
+
+    </main>
+
+    <!-- SheetJS for import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script type="module" src="/static/js/dashboard.js"></script>
+</body>
+</html>
