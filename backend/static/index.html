@@ -361,6 +361,56 @@
             border-radius: 14px;
             border: 1.5px dashed var(--paper-line);
         }
+        .analytics-card {
+            background: var(--card);
+            border-radius: 14px;
+            border: 1px solid var(--paper-line);
+            box-shadow: 0 1px 2px rgba(11,40,69,0.04);
+            padding: 1.2rem 1.2rem 1rem;
+        }
+        .analytics-card .title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--ink-soft);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.7rem;
+        }
+        .analytics-value {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        .level-bar {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: #e5e7eb;
+            overflow: hidden;
+            margin-top: 0.3rem;
+        }
+        .level-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--navy), var(--gold));
+            border-radius: inherit;
+        }
+        .at-risk-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+        }
+        .at-risk-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0.7rem;
+            border-radius: 10px;
+            background: var(--flag-soft);
+            color: var(--flag);
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
         .empty-state .icon {
             font-size: 2.5rem;
             margin-bottom: 0.75rem;
@@ -451,7 +501,7 @@
             <div class="ledger-item">
                 <div class="glyph">📝</div>
                 <div>
-                    <p class="label">Assessments Today</p>
+                    <p class="label">Total Assessments</p>
                     <div class="value" id="totalAssessments">0</div>
                 </div>
             </div>
@@ -474,6 +524,22 @@
                 <span>📂</span> Import SF1
             </button>
             <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" />
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            <div class="analytics-card">
+                <p class="title">Avg. Mastery</p>
+                <div id="avgClassMastery" class="analytics-value">0%</div>
+                <p class="text-sm mt-2" style="color: var(--ink-soft);">Average mastery based on recent learner performance.</p>
+            </div>
+            <div class="analytics-card">
+                <p class="title">Level Distribution</p>
+                <div id="levelDistribution"></div>
+            </div>
+            <div class="analytics-card">
+                <p class="title">At-Risk Learners</p>
+                <div id="atRiskList" class="at-risk-list"></div>
+            </div>
         </div>
 
         <div class="flex items-center justify-between mb-4">

@@ -3,10 +3,16 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import pandas as pd
 import io
-import re
 
 from .. import models, schemas
 from ..database import get_db
+from ..utils.import_helpers import (
+    find_sf1_data_sheet,
+    find_header_row_idx,
+    build_column_map,
+    extract_grade_section_metadata,
+    parse_learner_row,
+)
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/learners", tags=["Learners"])
@@ -25,55 +31,6 @@ class BulkLearnerCreate(BaseModel):
     grade_level: Optional[str] = None
     section: Optional[str] = None
     sex: Optional[str] = None
-
-# ============================================================
-# HELPER: SF1 Column Mapping
-# ============================================================
-
-def normalize_column_name(col: str) -> str:
-    """Clean up column names for matching."""
-    if not isinstance(col, str):
-        return ""
-    return col.strip().upper().replace(" ", "_")
-
-def map_sf1_columns(df_columns: List[str]) -> dict:
-    """
-    Maps SF1 Excel columns to our database fields.
-    Returns a dict with keys: 'lrn', 'first_name', 'last_name', 'grade_level', 'section'
-    """
-    mapping = {
-        'lrn': None,
-        'first_name': None,
-        'last_name': None,
-        'grade_level': None,
-        'section': None,
-    }
-
-    # Common aliases for each field (case-insensitive, spaces handled)
-    aliases = {
-        'lrn': ['LRN', 'LEARNER_REFERENCE_NUMBER', 'REFERENCE_NUMBER', 'ID'],
-        'first_name': ['FIRST_NAME', 'FIRSTNAME', 'GIVEN_NAME', 'NAME_FIRST', 'FIRST'],
-        'last_name': ['LAST_NAME', 'LASTNAME', 'SURNAME', 'FAMILY_NAME', 'NAME_LAST', 'LAST'],
-        'grade_level': ['GRADE_LEVEL', 'GRADE', 'GRADE_LVL', 'LEVEL', 'YEAR_LEVEL'],
-        'section': ['SECTION', 'CLASS', 'DIVISION', 'GROUP'],
-    }
-
-    # Normalize actual dataframe columns
-    normalized_cols = [normalize_column_name(c) for c in df_columns]
-
-    for field, field_aliases in aliases.items():
-        for idx, norm_col in enumerate(normalized_cols):
-            if norm_col in field_aliases:
-                mapping[field] = df_columns[idx]
-                break
-            for alias in field_aliases:
-                if alias in norm_col or norm_col in alias:
-                    mapping[field] = df_columns[idx]
-                    break
-            if mapping[field]:
-                break
-
-    return mapping
 
 # ============================================================
 # PUT /{learner_id}/level - UPDATE LEARNER LEVEL
@@ -250,22 +207,8 @@ async def import_sf1(
     # 2. Read the file into a pandas DataFrame
     try:
         contents = await file.read()
-        # Read the entire Excel file (all sheets) to find the data sheet
         xl = pd.ExcelFile(io.BytesIO(contents))
-        sheet_names = xl.sheet_names
-        data_sheet = None
-        for sheet in sheet_names:
-            df_temp = pd.read_excel(xl, sheet_name=sheet, header=None)
-            if not df_temp.empty and df_temp.iloc[0, 0] == "School Form 1 (SF 1) School Register":
-                data_sheet = sheet
-                break
-        if not data_sheet:
-            # Fallback: use the first non-empty sheet
-            for sheet in sheet_names:
-                df_temp = pd.read_excel(xl, sheet_name=sheet, header=None)
-                if not df_temp.empty:
-                    data_sheet = sheet
-                    break
+        data_sheet = find_sf1_data_sheet(xl)
         if not data_sheet:
             raise HTTPException(status_code=400, detail="No data sheet found in the file.")
 
@@ -277,123 +220,46 @@ async def import_sf1(
             detail=f"Failed to parse file: {str(e)}"
         )
 
-    # 3. Locate the column headers row (the one with "LRN" and "NAME")
-    header_row_idx = None
-    for idx, row in df_raw.iterrows():
-        row_str = row.astype(str).str.upper().str.strip()
-        if 'LRN' in row_str.values and 'NAME' in row_str.values:
-            header_row_idx = idx
-            break
-
+    header_row_idx = find_header_row_idx(df_raw)
     if header_row_idx is None:
         raise HTTPException(
             status_code=400,
             detail="Could not find header row containing 'LRN' and 'NAME'. Please ensure this is a valid SF1 file."
         )
 
-    # 4. Extract column indices from the header row
     header_row = df_raw.iloc[header_row_idx]
-    col_map = {}
-    for idx, val in enumerate(header_row):
-        if isinstance(val, str):
-            val_clean = val.strip().upper()
-            if 'LRN' in val_clean:
-                col_map['lrn'] = idx
-            elif 'NAME' in val_clean and 'LAST' in val_clean:
-                col_map['name'] = idx
-            elif 'SEX' in val_clean:
-                col_map['sex'] = idx
-            elif 'BIRTH' in val_clean and 'DATE' in val_clean:
-                col_map['birthdate'] = idx
-            elif 'AGE' in val_clean and 'FRIDAY' in val_clean:
-                col_map['age'] = idx
-            elif 'MOTHER TONGUE' in val_clean:
-                col_map['mother_tongue'] = idx
-            elif 'IP' in val_clean and 'ETHNIC' in val_clean:
-                col_map['ip'] = idx
-            elif 'RELIGION' in val_clean:
-                col_map['religion'] = idx
-            elif 'BARANGAY' in val_clean:
-                col_map['barangay'] = idx
-            elif 'MUNICIPALITY' in val_clean or 'CITY' in val_clean:
-                col_map['municipality'] = idx
-            elif 'PROVINCE' in val_clean:
-                col_map['province'] = idx
-
-    # 5. Validate we found at least LRN and NAME
+    col_map = build_column_map(header_row)
     if 'lrn' not in col_map or 'name' not in col_map:
         raise HTTPException(
             status_code=400,
             detail=f"Could not find LRN and NAME columns. Found: {list(col_map.keys())}. Header row: {header_row.tolist()}"
         )
 
-    # 6. Extract Grade Level and Section from metadata rows
-    grade_level = None
-    section = None
-    for idx in range(0, header_row_idx):
-        row = df_raw.iloc[idx].astype(str).str.strip()
-        for j, val in enumerate(row):
-            if 'GRADE LEVEL' in val.upper():
-                if j + 1 < len(row):
-                    grade_level = row[j+1]
-                    if grade_level and grade_level != 'nan':
-                        grade_level = grade_level.strip()
-            elif 'SECTION' in val.upper():
-                if j + 1 < len(row):
-                    section = row[j+1]
-                    if section and section != 'nan':
-                        section = section.strip()
+    grade_level, section = extract_grade_section_metadata(df_raw, header_row_idx)
 
-    # 7. Process data rows
     learners_to_add = []
     errors = []
     success_count = 0
     skipped_count = 0
 
     for idx in range(header_row_idx + 1, len(df_raw)):
-        row = df_raw.iloc[idx]
-        if row.isnull().all():
-            continue
-
-        lrn_val = row[col_map['lrn']] if col_map['lrn'] < len(row) else None
-        if pd.isna(lrn_val) or not isinstance(lrn_val, (int, float, str)):
+        parsed = parse_learner_row(df_raw.iloc[idx], col_map)
+        if not parsed:
             skipped_count += 1
             continue
 
-        lrn = str(lrn_val).strip()
-        if not lrn.isdigit() or len(lrn) < 10:
-            skipped_count += 1
-            continue
-
-        name_val = row[col_map['name']] if col_map['name'] < len(row) else None
-        if pd.isna(name_val) or not isinstance(name_val, str):
-            skipped_count += 1
-            continue
-
-        name_parts = name_val.strip().split(',')
-        if len(name_parts) < 2:
-            skipped_count += 1
-            continue
-
-        last_name = name_parts[0].strip()
-        first_and_middle = name_parts[1].strip()
-        first_name_parts = first_and_middle.split()
-        first_name = first_name_parts[0] if first_name_parts else ""
-
-        # Check duplicate LRN
-        existing = db.query(models.Learner).filter(models.Learner.lrn == lrn).first()
+        existing = db.query(models.Learner).filter(models.Learner.lrn == parsed['lrn']).first()
         if existing:
             skipped_count += 1
             continue
 
-        learner = models.Learner(
-            lrn=lrn,
-            first_name=first_name,
-            last_name=last_name,
+        learners_to_add.append(models.Learner(
+            lrn=parsed['lrn'],
+            first_name=parsed['first_name'],
+            last_name=parsed['last_name'],
             grade_level=grade_level,
             section=section
-        )
-        learners_to_add.append(learner)
+        ))
         success_count += 1
 
     # 8. Bulk insert

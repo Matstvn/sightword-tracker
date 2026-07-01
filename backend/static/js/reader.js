@@ -19,6 +19,29 @@ let learnerId = null;
 let isConnected = false;
 
 // ============================================================
+// 2.5 Adjust Font Size Based on Word Length
+// ============================================================
+
+function adjustFontSizeForWord(word) {
+    const wordLength = word.length;
+    let fontSize;
+
+    // Scale font size based on word length
+    // Shorter words (≤6 chars) get max size, longer words get progressively smaller
+    if (wordLength <= 6) {
+        fontSize = 'clamp(4rem, 22vw, 30rem)';
+    } else if (wordLength <= 10) {
+        fontSize = 'clamp(3rem, 18vw, 24rem)';
+    } else if (wordLength <= 14) {
+        fontSize = 'clamp(2.5rem, 14vw, 20rem)';
+    } else {
+        fontSize = 'clamp(2rem, 10vw, 16rem)';
+    }
+
+    dom.wordDisplay.style.fontSize = fontSize;
+}
+
+// ============================================================
 // 3. Get URL Parameters
 // ============================================================
 
@@ -75,6 +98,7 @@ function connectWebSocket() {
         `;
         // Show the word display area (blank until first word arrives)
         dom.wordDisplay.textContent = '👀';
+        dom.wordDisplay.style.fontSize = 'clamp(4rem, 22vw, 30rem)'; // Reset to default
         dom.wordDisplay.style.display = 'block';
         dom.waitingState.style.display = 'none';
     };
@@ -88,6 +112,7 @@ function connectWebSocket() {
                 case 'word':
                     // Display the word in giant text
                     dom.wordDisplay.textContent = message.word.toLowerCase();
+                    adjustFontSizeForWord(message.word);
                     dom.wordDisplay.style.display = 'block';
                     dom.waitingState.style.display = 'none';
                     break;

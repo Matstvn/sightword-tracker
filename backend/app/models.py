@@ -1,9 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Text
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from .database import Base
-
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Text
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float, Text, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -21,25 +17,32 @@ class Learner(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     assessments = relationship("Assessment", back_populates="learner", cascade="all, delete-orphan")
+    practice_words = relationship("PracticeWord", back_populates="learner", cascade="all, delete-orphan")
 
 
 class SightWord(Base):
     __tablename__ = "sight_words"
-
     id = Column(Integer, primary_key=True, index=True)
     word = Column(String(50), unique=True, index=True, nullable=False)
     level = Column(String(20), nullable=False)  # e.g., Pre-Primer, Primer, Grade 1
     is_active = Column(Boolean, default=True)
 
+    # Add indexes for frequent queries: by level and by (word, level).
+    __table_args__ = (
+        Index('ix_sight_words_level', 'level'),
+        Index('ix_sight_words_word_level', 'word', 'level'),
+    )
+
     # Relationship: A word can be in many word results
     word_results = relationship("WordResult", back_populates="word")
+    practice_words = relationship("PracticeWord", back_populates="word")
 
 
 class Assessment(Base):
     __tablename__ = "assessments"
 
     id = Column(Integer, primary_key=True, index=True)
-    learner_id = Column(Integer, ForeignKey("learners.id", ondelete="CASCADE"), nullable=False)
+    learner_id = Column(Integer, ForeignKey("learners.id", ondelete="CASCADE"), nullable=False, index=True)
     level_tested = Column(String(20), nullable=True)
     total_words = Column(Integer, default=0)
     correct_count = Column(Integer, default=0)
@@ -51,12 +54,26 @@ class Assessment(Base):
     word_results = relationship("WordResult", back_populates="assessment", cascade="all, delete-orphan")
 
 
+class PracticeWord(Base):
+    __tablename__ = "practice_words"
+
+    id = Column(Integer, primary_key=True, index=True)
+    learner_id = Column(Integer, ForeignKey("learners.id", ondelete="CASCADE"), nullable=False, index=True)
+    word_id = Column(Integer, ForeignKey("sight_words.id", ondelete="CASCADE"), nullable=False, index=True)
+    incorrect_count = Column(Integer, default=1, nullable=False)
+    last_practiced_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    learner = relationship("Learner", back_populates="practice_words")
+    word = relationship("SightWord", back_populates="practice_words")
+
+
 class WordResult(Base):
     __tablename__ = "word_results"
 
     id = Column(Integer, primary_key=True, index=True)
-    assessment_id = Column(Integer, ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False)
-    word_id = Column(Integer, ForeignKey("sight_words.id", ondelete="CASCADE"), nullable=False)
+    assessment_id = Column(Integer, ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True)
+    word_id = Column(Integer, ForeignKey("sight_words.id", ondelete="CASCADE"), nullable=False, index=True)
     is_correct = Column(Boolean, nullable=False)
     response_time_ms = Column(Integer, nullable=True)  # Future use for fluency tracking
 

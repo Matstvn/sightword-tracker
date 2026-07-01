@@ -2,6 +2,8 @@
 // dashboard.js - Main Dashboard Controller (Modern UI)
 // ============================================================
 
+import { escapeHtml } from './utils.js';
+
 // ============================================================
 // 1. DOM References
 // ============================================================
@@ -12,6 +14,9 @@ const dom = {
     totalLearners: document.getElementById('totalLearners'),
     totalAssessments: document.getElementById('totalAssessments'),
     avgMastery: document.getElementById('avgMastery'),
+    avgClassMastery: document.getElementById('avgClassMastery'),
+    levelDistribution: document.getElementById('levelDistribution'),
+    atRiskList: document.getElementById('atRiskList'),
     learnerGrid: document.getElementById('learnerGrid'),
     emptyState: document.getElementById('emptyState'),
     loadingSpinner: document.getElementById('loadingSpinner'),
@@ -24,6 +29,7 @@ const dom = {
 // 2. State
 // ============================================================
 let allLearners = [];
+let allAssessments = [];
 
 // ============================================================
 // 3. API Calls
@@ -32,6 +38,12 @@ let allLearners = [];
 async function fetchLearners() {
     const response = await fetch('/api/learners?limit=200');
     if (!response.ok) throw new Error(`Failed to fetch learners: ${response.statusText}`);
+    return response.json();
+}
+
+async function fetchAssessments() {
+    const response = await fetch('/api/assessments');
+    if (!response.ok) throw new Error(`Failed to fetch assessments: ${response.statusText}`);
     return response.json();
 }
 
@@ -95,15 +107,15 @@ function renderLearners(learners) {
         card.innerHTML = `
             <div class="flex items-start justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="avatar">${initial}</div>
+                    <div class="avatar">${escapeHtml(initial)}</div>
                     <div>
-                        <p class="name">${learner.first_name} ${learner.last_name}</p>
-                        <p class="lrn">LRN: ${learner.lrn || '—'}</p>
+                        <p class="name">${escapeHtml(learner.first_name)} ${escapeHtml(learner.last_name)}</p>
+                        <p class="lrn">LRN: ${escapeHtml(learner.lrn) || '—'}</p>
                     </div>
                 </div>
             </div>
             <div class="mt-2 flex items-center justify-between">
-                <span class="${levelClass}">${displayLevel}</span>
+                <span class="${levelClass}">${escapeHtml(displayLevel)}</span>
             </div>
             <div class="actions">
                 <button data-id="${learner.id}" class="btn-profile" title="View profile">👤</button>
@@ -114,10 +126,68 @@ function renderLearners(learners) {
     });
 }
 
-function updateStats(learners) {
+function updateStats(learners, assessments) {
     dom.totalLearners.textContent = learners.length;
-    dom.totalAssessments.textContent = '0';
-    dom.avgMastery.textContent = '0%';
+    dom.totalAssessments.textContent = assessments.length;
+
+    if (assessments.length === 0) {
+        dom.avgMastery.textContent = '0%';
+        dom.avgClassMastery.textContent = '0%';
+        dom.levelDistribution.innerHTML = '<p class="text-sm text-gray-500">No assessment data yet.</p>';
+        dom.atRiskList.innerHTML = '<p class="text-sm text-gray-500">No at-risk learners yet.</p>';
+        return;
+    }
+
+    const avg = assessments.reduce((sum, assessment) => sum + (assessment.mastery_percentage || 0), 0) / assessments.length;
+    const roundedAvg = Math.round(avg);
+    dom.avgMastery.textContent = `${roundedAvg}%`;
+    dom.avgClassMastery.textContent = `${roundedAvg}%`;
+
+    const levelCounts = assessments.reduce((acc, assessment) => {
+        const level = assessment.level_tested || 'Unassigned';
+        acc[level] = (acc[level] || 0) + 1;
+        return acc;
+    }, {});
+
+    const totalAssessmentsCount = assessments.length;
+    dom.levelDistribution.innerHTML = Object.entries(levelCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([level, count]) => {
+            const percent = Math.round((count / totalAssessmentsCount) * 100);
+            return `
+                <div class="mb-3">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="font-medium">${escapeHtml(level)}</span>
+                        <span class="text-gray-500">${count} (${percent}%)</span>
+                    </div>
+                    <div class="level-bar">
+                        <div class="level-bar-fill" style="width: ${percent}%"></div>
+                    </div>
+                </div>
+            `;
+        })
+        .join('');
+
+    const learnerMastery = learners.map(learner => {
+        const learnerAssessments = assessments.filter(a => a.learner_id === learner.id);
+        const latest = learnerAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        const average = learnerAssessments.length
+            ? learnerAssessments.reduce((sum, a) => sum + (a.mastery_percentage || 0), 0) / learnerAssessments.length
+            : 0;
+        return { learner, average, latest };
+    });
+
+    const atRisk = learnerMastery.filter(item => item.average < 60).slice(0, 5);
+    if (atRisk.length === 0) {
+        dom.atRiskList.innerHTML = '<p class="text-sm text-gray-500">No learners currently at risk.</p>';
+    } else {
+        dom.atRiskList.innerHTML = atRisk.map(({ learner, average }) => `
+            <div class="at-risk-item">
+                <span>${escapeHtml(learner.first_name)} ${escapeHtml(learner.last_name)}</span>
+                <span>${Math.round(average)}%</span>
+            </div>
+        `).join('');
+    }
 }
 
 function setLoading(loading) {
@@ -273,9 +343,11 @@ async function importExcel(event) {
 async function refreshLearners() {
     setLoading(true);
     try {
-        allLearners = await fetchLearners();
+        const [learners, assessments] = await Promise.all([fetchLearners(), fetchAssessments()]);
+        allLearners = learners;
+        allAssessments = assessments;
         renderLearners(allLearners);
-        updateStats(allLearners);
+        updateStats(allLearners, allAssessments);
     } catch (error) {
         console.error('Failed to refresh learners:', error);
         showToast('❌ Failed to refresh learner list.', 'error');

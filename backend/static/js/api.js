@@ -11,9 +11,10 @@ export const api = {
      * @param {Object} options
      * @param {string} options.level - e.g., 'Pre-Primer'
      * @param {string} options.ids - comma-separated IDs, e.g., '1,2,3'
+     * @param {number} options.per_page - number of words to fetch (default 100)
      */
-    async getWords({ level, ids } = {}) {
-        let url = `${API_BASE}/words?`;
+    async getWords({ level, ids, per_page = 100 } = {}) {
+        let url = `${API_BASE}/words?per_page=${per_page}&`;
         if (level) url += `level=${encodeURIComponent(level)}&`;
         if (ids) url += `ids=${encodeURIComponent(ids)}&`;
         const response = await fetch(url);

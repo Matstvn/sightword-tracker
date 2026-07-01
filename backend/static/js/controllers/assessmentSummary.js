@@ -2,6 +2,8 @@
 // assessmentSummary.js - Assessment Summary Controller
 // ============================================================
 
+import { escapeHtml } from '../utils.js';
+
 // ============================================================
 // 1. DOM References
 // ============================================================
@@ -25,6 +27,7 @@ const dom = {
     backToProfileBtn: document.getElementById('backToProfileBtn'),
     newAssessmentBtn: document.getElementById('newAssessmentBtn'),
     printBtn: document.getElementById('printBtn'),
+    exportBtn: document.getElementById('exportBtn'),
 };
 
 // ============================================================
@@ -80,7 +83,7 @@ function getSlowWords(wordResults) {
                      r.response_time_ms <= thresholdHigh)
         .map(r => ({
             word_id: r.word_id,
-            word: r.word?.word || 'Unknown',
+            word: getWordText(r),
             response_time_ms: r.response_time_ms,
             is_correct: r.is_correct,
         }));
@@ -89,6 +92,21 @@ function getSlowWords(wordResults) {
 function formatTime(ms) {
     if (!ms) return '—';
     return (ms / 1000).toFixed(1) + 's';
+}
+
+function getWordText(result) {
+    if (!result) return '?';
+
+    const directWord = result.word?.word || result.word || result.word_text || result.wordText || result.word_name || result.wordName;
+    if (typeof directWord === 'string' && directWord.trim()) {
+        return directWord.trim();
+    }
+
+    if (result.word_id != null) {
+        return `Word ${result.word_id}`;
+    }
+
+    return '?';
 }
 
 // ============================================================
@@ -233,14 +251,14 @@ function renderSummary(assessment, learner) {
     if (wordResults.length === 0) {
         dom.wordResultsContainer.innerHTML = '<p class="text-gray-500 text-center py-4">No word details available.</p>';
     } else {
-        const correctWords = wordResults.filter(r => r.is_correct).map(r => r.word?.word || '?');
-        const incorrectWords = wordResults.filter(r => !r.is_correct).map(r => r.word?.word || '?');
+        const correctWords = wordResults.filter(r => r.is_correct).map(r => getWordText(r));
+        const incorrectWords = wordResults.filter(r => !r.is_correct).map(r => getWordText(r));
 
         let html = '';
         if (incorrectWords.length > 0) {
             html += `<div class="mb-4">
                 <p class="text-sm font-semibold text-red-600 mb-2">❌ Missed Words (${incorrectWords.length})</p>
-                <div>${incorrectWords.map(w => `<span class="word-tag incorrect">${w}</span>`).join('')}</div>
+                <div>${incorrectWords.map(w => `<span class="word-tag incorrect">${escapeHtml(w)}</span>`).join('')}</div>
             </div>`;
         } else {
             html += `<div class="mb-4 text-emerald-600 font-medium">✅ All words correct!</div>`;
@@ -249,7 +267,7 @@ function renderSummary(assessment, learner) {
         if (correctWords.length > 0) {
             html += `<div>
                 <p class="text-sm font-semibold text-emerald-600 mb-2">✅ Correct Words (${correctWords.length})</p>
-                <div>${correctWords.map(w => `<span class="word-tag correct">${w}</span>`).join('')}</div>
+                <div>${correctWords.map(w => `<span class="word-tag correct">${escapeHtml(w)}</span>`).join('')}</div>
             </div>`;
         }
 
@@ -274,7 +292,7 @@ function renderSummary(assessment, learner) {
     incorrectList.forEach(r => {
         reviewMap.set(r.word_id, {
             word_id: r.word_id,
-            word: r.word?.word || 'Unknown',
+            word: getWordText(r),
             response_time_ms: r.response_time_ms,
             reason: 'Incorrect',
         });
@@ -335,7 +353,7 @@ function renderSummary(assessment, learner) {
             }
             html += `
                 <tr>
-                    <td class="px-6 py-3 text-sm font-medium text-gray-800">${w.word}</td>
+                    <td class="px-6 py-3 text-sm font-medium text-gray-800">${escapeHtml(w.word)}</td>
                     <td class="px-6 py-3 text-sm text-center text-gray-600">${time}</td>
                     <td class="px-6 py-3 text-sm text-center">${reasonBadge}</td>
                 </tr>
@@ -383,10 +401,71 @@ function showError(message) {
 }
 
 // ============================================================
-// 9. Print Function
+// 9. Report Actions
 // ============================================================
 function printSummary() {
     window.print();
+}
+
+function exportSummaryReport() {
+    if (!assessmentData || !learnerData) {
+        showToast('Report data is not ready yet.', 'error');
+        return;
+    }
+
+    const learnerName = `${learnerData.first_name || ''} ${learnerData.last_name || ''}`.trim();
+    const level = assessmentData.level_tested || learnerData.current_level || '—';
+    const total = assessmentData.total_words || 0;
+    const correct = assessmentData.correct_count || 0;
+    const incorrect = Math.max(total - correct, 0);
+    const mastery = Math.round(assessmentData.mastery_percentage || 0);
+    const recommendation = dom.recommendationText.textContent || 'No recommendation available.';
+    const wordResults = assessmentData.word_results || [];
+    const correctWords = wordResults.filter(r => r.is_correct).map(r => getWordText(r));
+    const incorrectWords = wordResults.filter(r => !r.is_correct).map(r => getWordText(r));
+    const reviewWords = Array.from(new Map(
+        [
+            ...wordResults.filter(r => !r.is_correct).map(r => ({ word_id: r.word_id, word: getWordText(r), reason: 'Incorrect' })),
+            ...getSlowWords(wordResults).map(r => ({ word_id: r.word_id, word: r.word, reason: 'Slow' })),
+        ].map(item => [item.word_id, item])
+    ).values());
+
+    const reportLines = [
+        'Assessment Summary Report',
+        '========================',
+        `Learner: ${learnerName || 'Unknown'}`,
+        `LRN: ${learnerData.lrn || '—'}`,
+        `Level: ${level}`,
+        `Date: ${new Date(assessmentData.created_at || Date.now()).toLocaleString()}`,
+        '',
+        `Total Words: ${total}`,
+        `Correct: ${correct}`,
+        `Incorrect: ${incorrect}`,
+        `Mastery: ${mastery}%`,
+        '',
+        'Recommendation:',
+        recommendation,
+        '',
+        'Incorrect Words:',
+        incorrectWords.length ? incorrectWords.join(', ') : 'None',
+        '',
+        'Correct Words:',
+        correctWords.length ? correctWords.join(', ') : 'None',
+        '',
+        'Words to Review:',
+        reviewWords.length ? reviewWords.map(w => `${w.word} (${w.reason})`).join(', ') : 'None',
+    ];
+
+    const blob = new Blob([reportLines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `assessment-report-${learnerData.id || assessmentId}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('Report exported successfully.', 'success');
 }
 
 // ============================================================
@@ -432,6 +511,7 @@ async function init() {
 // 11. Event Listeners
 // ============================================================
 dom.printBtn.addEventListener('click', printSummary);
+dom.exportBtn.addEventListener('click', exportSummaryReport);
 
 // ============================================================
 // 12. Start the app

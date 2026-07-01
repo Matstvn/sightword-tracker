@@ -2,6 +2,8 @@
 // learner.js - Learner Profile Controller
 // ============================================================
 
+import { escapeHtml } from './utils.js';
+
 // ============================================================
 // 1. DOM References
 // ============================================================
@@ -145,6 +147,93 @@ function renderStats(assessments) {
     }
 }
 
+function buildMasteryChart(assessments) {
+    const svg = document.getElementById('masteryChart');
+    if (!svg) return;
+
+    const sorted = [...assessments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    if (sorted.length === 0) {
+        svg.innerHTML = '<text x="20" y="40" fill="#64748b" font-size="14">No assessment data available.</text>';
+        return;
+    }
+
+    const width = 520;
+    const height = 220;
+    const padding = { top: 20, right: 20, bottom: 40, left: 42 };
+    const innerWidth = width - padding.left - padding.right;
+    const innerHeight = height - padding.top - padding.bottom;
+    const values = sorted.map(a => Math.min(100, Math.max(0, a.mastery_percentage || 0)));
+    const maxValue = 100;
+
+    const points = values.map((value, index) => {
+        const x = padding.left + (index / Math.max(sorted.length - 1, 1)) * innerWidth;
+        const y = padding.top + (1 - value / maxValue) * innerHeight;
+        return { x, y, value };
+    });
+
+    const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
+    const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${height - padding.bottom} L ${points[0].x.toFixed(1)} ${height - padding.bottom} Z`;
+
+    const gridLines = [100, 75, 50, 25, 0].map(tick => {
+        const y = padding.top + (1 - tick / maxValue) * innerHeight;
+        return `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="#e2e8f0" stroke-dasharray="4 4" />`;
+    }).join('');
+
+    const labels = [100, 75, 50, 25, 0].map(tick => {
+        const y = padding.top + (1 - tick / maxValue) * innerHeight;
+        return `<text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" font-size="12" fill="#64748b">${tick}</text>`;
+    }).join('');
+
+    const dateLabels = sorted.map((assessment, index) => {
+        const x = padding.left + (index / Math.max(sorted.length - 1, 1)) * innerWidth;
+        const date = new Date(assessment.created_at);
+        const label = date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+        return `<text x="${x}" y="${height - 12}" text-anchor="middle" font-size="11" fill="#64748b">${label}</text>`;
+    }).join('');
+
+    const markers = points.map((point, index) => `
+        <circle cx="${point.x}" cy="${point.y}" r="5" fill="#0B3D6E" stroke="#fff" stroke-width="2"></circle>
+        <text x="${point.x}" y="${point.y - 10}" text-anchor="middle" font-size="11" fill="#0B3D6E">${Math.round(point.value)}%</text>
+    `).join('');
+
+    svg.innerHTML = `
+        <rect x="0" y="0" width="${width}" height="${height}" rx="12" fill="#fff"></rect>
+        ${gridLines}
+        <path d="${areaPath}" fill="rgba(11, 61, 110, 0.12)"></path>
+        <path d="${linePath}" fill="none" stroke="#0B3D6E" stroke-width="3" stroke-linecap="round"></path>
+        ${markers}
+        ${labels}
+        ${dateLabels}
+    `;
+}
+
+function buildWordPerformanceChart(assessment) {
+    const container = document.getElementById('wordPerformanceChart');
+    if (!container) return;
+
+    const results = (assessment && assessment.word_results) ? assessment.word_results : [];
+    if (results.length === 0) {
+        container.innerHTML = '<div class="chart-empty">No word-level details available for the latest assessment.</div>';
+        return;
+    }
+
+    const rows = results.slice(0, 12).map(result => {
+        const word = result.word?.word || `Word ${result.word_id}`;
+        const isCorrect = Boolean(result.is_correct);
+        return `
+            <div class="word-performance-row">
+                <div class="word-performance-label">${escapeHtml(word)}</div>
+                <div class="word-performance-track">
+                    <div class="word-performance-fill ${isCorrect ? 'correct' : 'incorrect'}" style="width: 100%"></div>
+                </div>
+                <span class="word-performance-status ${isCorrect ? 'correct' : 'incorrect'}">${isCorrect ? '✓' : '✗'}</span>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `<div class="word-chart-list">${rows}</div>`;
+}
+
 function renderHistory(assessments) {
     const tbody = dom.historyBody;
     const empty = dom.emptyHistory;
@@ -175,7 +264,7 @@ function renderHistory(assessments) {
 
         tr.innerHTML = `
             <td class="px-6 py-4 text-sm text-gray-600">${formattedDate}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 font-medium">${assessment.level_tested || '—'}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 font-medium">${escapeHtml(assessment.level_tested) || '—'}</td>
             <td class="px-6 py-4 text-sm text-gray-600 text-center">${assessment.total_words || 0}</td>
             <td class="px-6 py-4 text-sm text-gray-600 text-center">${assessment.correct_count || 0}</td>
             <td class="px-6 py-4 text-sm font-bold text-center ${masteryColor}">${Math.round(mastery)}%</td>
@@ -191,7 +280,7 @@ function renderHistory(assessments) {
     tbody.querySelectorAll('.view-assessment-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const id = e.target.dataset.id;
-            alert(`📄 Assessment #${id} details will be available in the next update.`);
+            window.location.href = `/pages/assessmentSummary.html?assessmentId=${encodeURIComponent(id)}&learnerId=${encodeURIComponent(learnerId)}`;
         });
     });
 }
@@ -266,6 +355,9 @@ async function init() {
 
         renderLearnerHeader(learnerData);
         renderStats(assessments);
+        const sortedAssessments = [...assessments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        buildMasteryChart(sortedAssessments);
+        buildWordPerformanceChart(sortedAssessments[0] || null);
         renderHistory(assessments);
 
         dom.startAssessmentBtn.disabled = false;

@@ -1,28 +1,64 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import os
 
 from .database import engine, Base
 from .routers import learners, words, assessments, websocket
+from .config import settings
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Sight Word Tracker API", version="1.0")
+app = FastAPI(title=settings.APP_NAME, version="1.0")
+
+
+# HTTPS enforcement middleware
+class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if settings.FORCE_HTTPS:
+            is_secure = request.url.scheme == "https"
+            x_forwarded_proto = request.headers.get("x-forwarded-proto", "")
+            if not is_secure and x_forwarded_proto.lower() != "https":
+                target_url = request.url.replace(scheme="https")
+                return JSONResponse(
+                    {"detail": "HTTPS required."},
+                    status_code=308,
+                    headers={"Location": str(target_url)},
+                )
+        return await call_next(request)
+
+
+app.add_middleware(HTTPSRedirectMiddleware)
+
+# Shared-password gate middleware
+class SharedPasswordMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Only enforce when a shared password is configured
+        shared = getattr(settings, "SHARED_PASSWORD", None)
+        if not shared:
+            return await call_next(request)
+
+        # Only protect mutating methods that could touch real student data
+        if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path.startswith("/api"):
+            provided = request.headers.get("x-shared-password") or request.query_params.get("shared_password")
+            if not provided or provided != str(shared):
+                return JSONResponse({"detail": "Shared password required for mutating requests."}, status_code=401)
+
+        return await call_next(request)
+
+
+app.add_middleware(SharedPasswordMiddleware)
 
 # ==========================================================
 # CORS Middleware – FIXED for WebSocket handshake
 # ==========================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        # Add any other origins you use (e.g., if you later have a separate frontend port)
-    ],
-    allow_credentials=True,   # Keep True for cookies/auth later
+    allow_origins=settings.allowed_origins_list,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

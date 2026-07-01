@@ -1,5 +1,10 @@
-fastapi
-uvicorn
-sqlalchemy
-pymysql
-python-dotenv
+fastapi==0.95.2
+uvicorn==0.22.0
+sqlalchemy==1.4.52
+pymysql==1.0.3
+python-dotenv==1.0.0
+# Pydantic: prefer pydantic-settings for v2
+# If using pydantic v2, install pydantic-settings
+# If using pydantic v1, the `pydantic` package is still required for some environments
+pydantic-settings==0.14.0
+pydantic==1.10.12

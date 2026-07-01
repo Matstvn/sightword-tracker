@@ -279,6 +279,57 @@
         .empty-block .icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.6; }
         .empty-block p { color: var(--ink-soft); font-size: 0.9rem; }
 
+        .chart-shell {
+            background: #f8fafc;
+            border: 1px solid var(--paper-line);
+            border-radius: 12px;
+            padding: 1rem;
+            min-height: 220px;
+        }
+        .chart-shell svg { width: 100%; height: auto; display: block; }
+        .chart-empty {
+            color: var(--ink-soft);
+            font-size: 0.9rem;
+            padding: 1rem 0;
+        }
+        .word-chart-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+        }
+        .word-performance-row {
+            display: grid;
+            grid-template-columns: minmax(90px, 140px) 1fr auto;
+            gap: 0.6rem;
+            align-items: center;
+        }
+        .word-performance-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--ink);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .word-performance-track {
+            height: 10px;
+            border-radius: 999px;
+            background: #e5e7eb;
+            overflow: hidden;
+        }
+        .word-performance-fill {
+            height: 100%;
+            border-radius: inherit;
+        }
+        .word-performance-fill.correct { background: var(--mastery); }
+        .word-performance-fill.incorrect { background: var(--flag); }
+        .word-performance-status {
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .word-performance-status.correct { color: var(--mastery); }
+        .word-performance-status.incorrect { color: var(--flag); }
+
         .loading-spinner-ring {
             width: 34px;
             height: 34px;
@@ -367,6 +418,28 @@
                     <div>
                         <p class="label">Current Level</p>
                         <div class="value" id="currentLevel">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="deped-card mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-lg font-semibold" style="color: var(--ink);">📈 Assessment History Charts</h2>
+                        <p class="text-sm mt-1" style="color: var(--ink-soft);">Visualize mastery trends and recent word-level performance.</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="text-sm font-semibold mb-2" style="color: var(--ink);">Mastery Over Time</h3>
+                        <div id="masteryChartContainer" class="chart-shell">
+                            <svg id="masteryChart" viewBox="0 0 520 220" aria-label="Mastery over time chart"></svg>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold mb-2" style="color: var(--ink);">Latest Word Performance</h3>
+                        <div id="wordPerformanceChart" class="chart-shell"></div>
                     </div>
                 </div>
             </div>

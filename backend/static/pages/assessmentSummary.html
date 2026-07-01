@@ -4,33 +4,73 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Assessment Summary</title>
+
+    <!-- App styles (shared) -->
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="/static/css/teacher.css" />
     <link rel="stylesheet" href="/static/css/tailwind.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
+        :root {
+            --navy: #0B3D6E;
+            --navy-deep: #062845;
+            --gold: #F9A800;
+            --paper: #F7F5F0;
+            --paper-line: #E8E3D8;
+            --ink: #1C2B3A;
+            --ink-soft: #5B6B7A;
+            --mastery: #2F855A;
+            --mastery-soft: #E6F4EC;
+            --flag: #C0392B;
+            --flag-soft: #FBEAE8;
+            --card: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; }
+        body { background: var(--paper); font-family: 'Inter', system-ui, sans-serif; color: var(--ink); }
+
+        .deped-header { background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%); border-bottom: 5px solid var(--gold); position: sticky; top: 0; z-index: 50; }
+        .deped-header .header-inner { padding: 0.85rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .deped-header .seal { height: 38px; width: 38px; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25)); }
+
+        .deped-card { background: var(--card); border-radius: 14px; border: 1px solid var(--paper-line); box-shadow: 0 1px 2px rgba(11,40,69,0.04); padding: 1.15rem 1.4rem; }
+
+        .btn-outline { background: var(--card); border: 1.5px solid var(--paper-line); color: var(--ink); padding: 0.6rem 1.1rem; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: var(--navy); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; padding: 0.6rem 1.1rem; }
+        .btn-success { background: var(--mastery); color: white; border-radius: 10px; padding: 0.6rem 1.1rem; }
+
         .word-tag { display: inline-block; padding: 0.2rem 0.8rem; border-radius: 30px; font-weight: 500; margin: 0.2rem; }
         .word-tag.correct { background: #d1fae5; color: #065f46; }
         .word-tag.incorrect { background: #fee2e2; color: #991b1b; }
-        .recommendation-box { border-left: 4px solid #f9a800; background: #fffbeb; padding: 1rem 1.25rem; border-radius: 0.5rem; }
+        .recommendation-box { border-left: 4px solid var(--gold); background: #fffbeb; padding: 1rem 1.25rem; border-radius: 0.5rem; }
         .progress-ring { transition: stroke-dashoffset 0.5s ease; }
+
+        @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
     </style>
 </head>
 <body class="bg-[#f0f4f8] min-h-screen">
 
     <!-- DepEd Header -->
     <header class="deped-header">
-        <div class="max-w-4xl mx-auto flex items-center justify-between flex-wrap">
-            <div class="logo">
-                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-10 w-auto">
-                    <circle cx="50" cy="50" r="45" fill="#fff" stroke="#f9a800" stroke-width="3"/>
-                    <text x="50" y="55" text-anchor="middle" font-size="28" font-weight="bold" fill="#003366">DepEd</text>
-                    <text x="50" y="75" text-anchor="middle" font-size="10" fill="#003366">Sight Word Tracker</text>
+        <div class="header-inner">
+            <div class="title-block">
+                <svg class="seal" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="46" fill="#0B3D6E" stroke="#F9A800" stroke-width="3"/>
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#F9A800" stroke-width="1" opacity="0.5"/>
+                    <text x="50" y="46" text-anchor="middle" font-family="Sora, sans-serif" font-size="15" font-weight="700" fill="#fff">DepEd</text>
+                    <text x="50" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-size="7" fill="#F9A800" letter-spacing="0.5">PHILIPPINES</text>
                 </svg>
                 <div>
-                    <h1>Assessment Summary</h1>
-                    <span class="sub">Department of Education</span>
+                    <span class="eyebrow">Assessment</span>
+                    <h1 class="display">Assessment Summary</h1>
                 </div>
             </div>
-            <div class="header-actions">
-                <span class="text-sm">📊 Summary</span>
+            <div>
+                <button id="exitBtn" class="btn-outline">✕ Exit</button>
             </div>
         </div>
     </header>
@@ -91,7 +131,8 @@
             <div class="mt-6 flex flex-col sm:flex-row gap-3">
                 <a id="backToProfileBtn" href="#" class="btn-outline flex-1 text-center">👤 Back to Learner</a>
                 <a id="newAssessmentBtn" href="#" class="btn-primary flex-1 text-center">🔄 New Assessment</a>
-                <button id="printBtn" class="btn-success flex-1 text-center">🖨️ Print</button>
+                <button id="printBtn" class="btn-success flex-1 text-center">🖨️ Print Report</button>
+                <button id="exportBtn" class="btn-outline flex-1 text-center">📥 Export Report</button>
             </div>
 
         </div>

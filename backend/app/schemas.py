@@ -42,6 +42,23 @@ class WordResultBase(BaseModel):
 class WordResultResponse(WordResultBase):
     id: int
     assessment_id: int
+    word: Optional[SightWordResponse] = None
+
+    class Config:
+        orm_mode = True
+
+
+class PracticeWordBase(BaseModel):
+    learner_id: int
+    word_id: int
+    incorrect_count: int = 1
+
+
+class PracticeWordResponse(PracticeWordBase):
+    id: int
+    last_practiced_at: datetime
+    created_at: datetime
+    word: Optional[SightWordResponse] = None
 
     class Config:
         orm_mode = True

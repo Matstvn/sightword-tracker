@@ -33,6 +33,20 @@ const dom = {
 // ============================================================
 const TIMER_SECONDS = 10;
 const CIRCUMFERENCE = 125.6;
+const MAX_WORDS = 100; // maximum number of words per assessment
+const HEARTBEAT_INTERVAL_MS = 15000; // send ping every 15s
+const HEARTBEAT_TIMEOUT_MS = 8000; // consider dead if no pong within 8s
+const RECONNECT_BASE_DELAY = 1000; // 1s
+const RECONNECT_MAX_DELAY = 30000; // 30s
+const STORAGE_KEY_PREFIX = 'sightword_assessment_draft_';
+const PENDING_SAVE_PREFIX = 'sightword_pending_save_';
+const SAVE_RETRY_DELAY = 5000; // retry save after 5s if offline
+
+let heartbeatInterval = null;
+let heartbeatTimeout = null;
+let lastPong = 0;
+let reconnectAttempts = 0;
+let pendingSaveTimeout = null;
 
 // ============================================================
 // 3. Assessment State
@@ -62,6 +76,9 @@ let readerWindow = null;
 
 function connectWebSocket() {
     if (!state.learnerId) return;
+    // Avoid creating duplicate sockets
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const room = `learner_${state.learnerId}`;
@@ -69,28 +86,44 @@ function connectWebSocket() {
 
     try {
         ws = new WebSocket(wsUrl);
+
         ws.onopen = () => {
             console.log('✅ WebSocket connected (Teacher)');
+            reconnectAttempts = 0;
+            lastPong = Date.now();
             updateReaderStatus('connected');
+            startHeartbeat();
         };
-        ws.onclose = () => {
-            console.log('❌ WebSocket disconnected (Teacher)');
+
+        ws.onclose = (ev) => {
+            console.log('❌ WebSocket disconnected (Teacher)', ev);
             updateReaderStatus('disconnected');
-            setTimeout(connectWebSocket, 3000);
+            stopHeartbeat();
+            scheduleReconnect();
         };
+
         ws.onerror = (error) => {
             console.error('WebSocket error (Teacher):', error);
             updateReaderStatus('error');
         };
+
         ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data);
+                // Handle app-level pong
+                if (msg && msg.type === 'pong') {
+                    lastPong = Date.now();
+                    return;
+                }
                 console.log('📨 Received (Teacher):', msg);
-            } catch (e) {}
+            } catch (e) {
+                // ignore non-JSON messages
+            }
         };
     } catch (error) {
         console.error('Failed to connect WebSocket:', error);
         updateReaderStatus('error');
+        scheduleReconnect();
     }
 }
 
@@ -199,6 +232,115 @@ function getUrlParams() {
     };
 }
 
+function getStorageKey() {
+    return `${STORAGE_KEY_PREFIX}${state.learnerId || 'unknown'}_${state.level || 'unknown'}`;
+}
+
+function getPendingSaveKey() {
+    return `${PENDING_SAVE_PREFIX}${state.learnerId || 'unknown'}_${state.level || 'unknown'}`;
+}
+
+function saveDraft() {
+    if (!state.learnerId || state.words.length === 0) return;
+    const data = {
+        learnerId: state.learnerId,
+        learnerName: state.learnerName,
+        level: state.level,
+        words: state.words,
+        currentIndex: state.currentIndex,
+        results: state.results,
+        correctCount: state.correctCount,
+        isStarted: state.isStarted,
+        isFinished: state.isFinished,
+    };
+    try {
+        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+    } catch (error) {
+        console.warn('Could not save draft to localStorage:', error);
+    }
+}
+
+function restoreDraft() {
+    try {
+        const raw = localStorage.getItem(getStorageKey());
+        if (!raw) return false;
+        const draft = JSON.parse(raw);
+        if (!draft || draft.learnerId !== state.learnerId) return false;
+
+        state.learnerName = draft.learnerName || state.learnerName;
+        state.level = draft.level || state.level;
+        state.words = draft.words || state.words;
+        state.currentIndex = draft.currentIndex || 0;
+        state.results = draft.results || [];
+        state.correctCount = draft.correctCount || 0;
+        state.isStarted = draft.isStarted || false;
+        state.isFinished = draft.isFinished || false;
+        return true;
+    } catch (error) {
+        console.warn('Could not restore draft from localStorage:', error);
+        return false;
+    }
+}
+
+function clearDraft() {
+    try {
+        localStorage.removeItem(getStorageKey());
+    } catch (error) {
+        console.warn('Could not clear draft from localStorage:', error);
+    }
+}
+
+function queueSaveRetry(payload) {
+    try {
+        localStorage.setItem(getPendingSaveKey(), JSON.stringify(payload));
+    } catch (error) {
+        console.warn('Could not queue pending save:', error);
+    }
+}
+
+function getPendingSave() {
+    try {
+        const raw = localStorage.getItem(getPendingSaveKey());
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (error) {
+        console.warn('Could not read pending save:', error);
+        return null;
+    }
+}
+
+function clearPendingSave() {
+    try {
+        localStorage.removeItem(getPendingSaveKey());
+    } catch (error) {
+        console.warn('Could not clear pending save:', error);
+    }
+}
+
+async function retryPendingSave() {
+    const payload = getPendingSave();
+    if (!payload) return;
+    if (!navigator.onLine) return;
+
+    try {
+        const saved = await api.saveAssessment(payload);
+        console.log('✅ Pending assessment saved after retry:', saved);
+        clearPendingSave();
+        clearDraft();
+        if (saved.id && payload.learner_id) {
+            window.location.href = `/pages/assessmentSummary.html?assessmentId=${saved.id}&learnerId=${payload.learner_id}`;
+        }
+    } catch (error) {
+        console.warn('Pending save retry failed:', error);
+        if (!pendingSaveTimeout) {
+            pendingSaveTimeout = setTimeout(() => {
+                pendingSaveTimeout = null;
+                retryPendingSave();
+            }, SAVE_RETRY_DELAY);
+        }
+    }
+}
+
 function updateProgress() {
     const current = state.currentIndex + 1;
     const total = state.words.length;
@@ -240,6 +382,7 @@ function displayCurrentWord() {
         }
         stopTimer();
     }
+    saveDraft();
     updateProgress();
 }
 // recordResult // 
@@ -383,7 +526,6 @@ async function finishAssessment() {
         return;
     }
 
-    // Prevent double-click
     state.isSaving = true;
     dom.finishBtn.textContent = '⏳ Saving...';
     dom.finishBtn.disabled = true;
@@ -391,6 +533,9 @@ async function finishAssessment() {
     const total = state.words.length;
     const correct = state.correctCount;
     const mastery = total > 0 ? (correct / total) * 100 : 0;
+    const incorrectWords = (state.results || [])
+        .filter(result => !result.is_correct)
+        .map(result => result.word_id);
 
     const payload = {
         learner_id: state.learnerId,
@@ -406,16 +551,33 @@ async function finishAssessment() {
     try {
         const saved = await api.saveAssessment(payload);
         console.log('✅ Assessment saved:', saved);
+
+        if (incorrectWords.length > 0) {
+            await Promise.allSettled(
+                incorrectWords.map(wordId => fetch('/api/assessments/practice-words', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ learner_id: state.learnerId, word_id: wordId, incorrect_count: 1 })
+                }))
+            );
+        }
+
+        clearDraft();
+        clearPendingSave();
         if (ws) ws.close();
         if (readerWindow && !readerWindow.closed) readerWindow.close();
         window.location.href = `/pages/assessmentSummary.html?assessmentId=${saved.id}&learnerId=${state.learnerId}`;
     } catch (error) {
         console.error('❌ Failed to save assessment:', error);
-        // Show the full error message to the user
-        alert(`Error saving assessment:\n\n${error.message}\n\nCheck console for details.`);
+        queueSaveRetry(payload);
+        showToast('⚠️ Save failed. Offline draft queued and will retry automatically.', 'warning');
         dom.finishBtn.textContent = '🏁 Finish Assessment';
         dom.finishBtn.disabled = false;
         state.isSaving = false;
+        pendingSaveTimeout = setTimeout(() => {
+            pendingSaveTimeout = null;
+            retryPendingSave();
+        }, SAVE_RETRY_DELAY);
     }
 }
 
@@ -460,6 +622,7 @@ async function init() {
     if (params.wordIds) {
         try {
             words = await api.getWords({ ids: params.wordIds });
+            words = words.slice(0, MAX_WORDS); // Limit to MAX_WORDS
             state.level = params.levelLabel || 'Retest';
             levelDisplay = state.level;
             dom.assessmentLevel.textContent = levelDisplay;
@@ -474,6 +637,7 @@ async function init() {
         dom.assessmentLevel.textContent = levelDisplay;
         try {
             words = await api.getWords({ level: state.level });
+            words = words.slice(0, MAX_WORDS); // Limit to MAX_WORDS
         } catch (error) {
             console.error('Failed to fetch words:', error);
             dom.currentWord.textContent = '❌ ERROR LOADING WORDS';
@@ -492,22 +656,46 @@ async function init() {
     }
 
     dom.learnerName.textContent = state.learnerName;
-    connectWebSocket();
-
     state.words = words;
-    state.currentIndex = 0;
-    state.results = [];
-    state.correctCount = 0;
-    state.isStarted = false;
-    state.isFinished = false;
 
-    dom.currentWord.textContent = '▶️ Press Start';
-    dom.correctBtn.disabled = true;
-    dom.incorrectBtn.disabled = true;
-    dom.previousBtn.disabled = true;
-    dom.finishBtn.disabled = true;
-    dom.startAssessmentBtn.disabled = false;
+    const restored = restoreDraft();
+    if (restored && state.isStarted) {
+        showToast('🔄 Restored your in-progress assessment from local storage.', 'info');
+    } else {
+        state.currentIndex = 0;
+        state.results = [];
+        state.correctCount = 0;
+        state.isStarted = false;
+        state.isFinished = false;
+    }
 
+    connectWebSocket();
+    updateViewForState();
+    if (navigator.onLine) {
+        retryPendingSave();
+    }
+
+    window.addEventListener('online', () => {
+        showToast('✅ Back online. Retrying saved assessment automatically.', 'success');
+        retryPendingSave();
+    });
+    window.addEventListener('offline', () => {
+        showToast('⚠️ You are offline. Progress is saved locally until connectivity returns.', 'warning');
+    });
+}
+
+function updateViewForState() {
+    if (state.currentIndex < state.words.length && state.isStarted && !state.isFinished) {
+        displayCurrentWord();
+    } else if (state.words.length > 0) {
+        dom.currentWord.textContent = state.isFinished ? '🎉 DONE!' : '▶️ Press Start';
+    }
+
+    dom.correctBtn.disabled = !state.isStarted || state.isFinished;
+    dom.incorrectBtn.disabled = !state.isStarted || state.isFinished;
+    dom.previousBtn.disabled = !state.isStarted || state.currentIndex === 0;
+    dom.finishBtn.disabled = !state.isStarted || !state.isFinished || state.isSaving;
+    dom.startAssessmentBtn.disabled = state.isStarted;
     updateProgress();
 }
 
